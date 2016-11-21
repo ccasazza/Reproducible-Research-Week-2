@@ -1,0 +1,58 @@
+---
+title: "Reproducible Research Week 2 Assignment"
+output: html_document
+---
+## Importing and Cleaning the Data Set 
+```{r, echo= TRUE}
+setwd("/users/craigcasazza/downloads")
+library(pacman)
+p_load(plyr,dplyr,reshape,reshape2,scales,rvest,jsonlite,utils,ggplot2)
+activity <- read.csv("activity.csv")
+class(activity$date)
+activity$date <- as.Date(as.character(activity$date, "%d/%m/%y"))
+```
+
+## Figuring out the Steps Per Day
+```{r}
+stepsper <- aggregate(steps ~ date, activity , sum)
+hist(stepsper$steps , main = "Histogram of Steps Per Day" , col = "red", xlab = "Total Number Steps Per Day")
+meansteps <- mean(stepsper$steps)
+mediansteps <- median(stepsper$steps)
+```
+
+## 5 Minute Interval Analysis 
+
+```{r, echo=TRUE}
+averages <- activity %>% group_by(interval) %>% summarise(mean = mean(steps, na.rm = T))
+ggplot(aes(x = interval , y = mean),data = averages) + geom_line() + xlab("5 Minute Interval") + ylab("Mean Steps") + ggtitle("The Average Number of Steps Per 5 Minute Interval")
+most <- which.max(averages$mean)
+most
+timemost <- averages[most,'interval']
+timemost
+```
+We find the most steps in a five minute interval was 104 which happened at the 835 interval mark. 
+
+## Filling in Missing Values
+
+```{r}
+na <- is.na(activity$steps)
+table(na)
+newdata <- activity
+library(Hmisc)
+newdata$steps <- impute(activity$steps, fun = mean)
+stepsperfilled <- aggregate(steps ~ date, newdata , sum)
+hist(stepsperfilled$steps , main = "Histogram of Steps Per Day" , col = "red", xlab = "Total Number Steps Per Day")
+meandatafilled <- mean(stepsperfilled$steps)
+mediandatafilled <- median(stepsperfilled$steps)
+```
+We find there are 2,304 missing values that need to be replaced. 
+
+## Is There is A Difference Between Weekday and Weekend
+```{r}
+newdata$day <- ifelse(as.POSIXlt(newdata$date)$wday %in% c(0,6), 'weekend', 'weekday')
+stepsperdaypertype <- newdata %>% group_by(interval,day) %>% summarise(mean = mean(steps))
+stepsperdaypertype
+ggplot(stepsperdaypertype, aes(interval, mean)) + geom_line() + facet_grid(day ~ .) +
+    xlab("5-minute Interval") + 
+    ylab("Average Number of Steps")
+```
